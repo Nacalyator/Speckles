@@ -1,0 +1,9 @@
+data/
+.conda/
+.vs
+.vscode
+gpt.txt
+BLUE.mp4
+BLUE.csv
+RED.mp4
+RED.csv
