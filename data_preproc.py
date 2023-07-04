@@ -1,7 +1,12 @@
 import csv
+from datetime import time
+from genericpath import isdir
 import cv2
+import numpy as np
+import os
+import matplotlib.pyplot as plt
 
-# Data files
+# Paths to data files
 video_path = './RED.mp4'
 csv_path = './RED.csv'
 
@@ -17,6 +22,7 @@ csv_reader.__next__()
 for row in csv_reader:
 	load_times.append(float(row[0].replace(',', '.')))
 	load_deforms.append(float(row[3].replace(',', '.')))
+print('CSV file has been read')
 
 # Read video frames and imfo
 timestamps = []
@@ -26,15 +32,33 @@ video_fps = cap.get(cv2.CAP_PROP_FPS)
 video_total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
 video_height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
 video_width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+prev = []
 while (cap.isOpened()):
 	ret, frame = cap.read()
 	if ret == True:
 		timestamps.append(cap.get(cv2.CAP_PROP_POS_MSEC)/1000)
 		frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 		frame = cv2.resize(frame, [250, 250])
-		frame = cv2.bilateralFilter(frame,9,75,75)
-		cv2.imshow('work', frame)
-		test = 1
+		#filt = cv2.bilateralFilter(frame, 7, 500, 500)
+		filt = cv2.medianBlur(frame, 9)
+		#pic = np.concatenate((frame, filt), axis=1)
+		#cv2.imshow('Result', pic)
+		#cv2.waitKey(0)
 	else:
 		break
-	
+print('Frames have been read')
+
+# Synchronizing timestamps with the deformation timings
+data_deform = np.interp(timestamps, load_times, load_deforms)
+data_time = timestamps
+
+
+# Creating data for NN training
+base_dir = './'
+data_dir = os.path.join(base_dir, 'train')
+df_csv = os.path.join(data_dir, 'df.csv')
+if not os.path.isdir(data_dir):
+	os.mkdir(data_dir)
+
+csv_file = open(df_csv, 'w', newline='')
+df_writer = csv.writer(csv_file) 
