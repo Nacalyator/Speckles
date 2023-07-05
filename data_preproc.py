@@ -44,14 +44,13 @@ while (cap.isOpened()):
 		#pic = np.concatenate((frame, filt), axis=1)
 		#cv2.imshow('Result', pic)
 		#cv2.waitKey(0)
+		frames.append(filt)
 	else:
 		break
 print('Frames have been read')
 
 # Synchronizing timestamps with the deformation timings
 data_deform = np.interp(timestamps, load_times, load_deforms)
-data_time = timestamps
-
 
 # Creating data for NN training
 base_dir = './'
@@ -60,5 +59,20 @@ df_csv = os.path.join(data_dir, 'df.csv')
 if not os.path.isdir(data_dir):
 	os.mkdir(data_dir)
 
+#input_data = []
+#output_data = []
 csv_file = open(df_csv, 'w', newline='')
-df_writer = csv.writer(csv_file) 
+csv_header = ['pics', 'vals']
+df_writer = csv.writer(csv_file, delimiter=';') 
+df_writer.writerow(csv_header)
+count = 0
+for j in range(1, 10):
+	for i in range(len(frames)-j):
+		filename = str(count).zfill(5) + '.png'
+		#buff = np.concatenate((frames[i], frames[i + j]), axis=1)
+		cv2.imwrite(os.path.join(data_dir, filename), np.concatenate((frames[i], frames[i + j]), axis=1))
+		df_writer.writerow([filename, str(abs(data_deform[i] - data_deform[i+j]))])
+		count += 1
+		#input_data.append(np.concatenate((frames[i], frames[i + j]), axis=1))
+		#output_data.append(abs(data_deform[i] - data_deform[i+j]))
+csv_file.close()
