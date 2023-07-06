@@ -8,36 +8,39 @@ import matplotlib.pyplot as plt
 
 # Create generators for data
 base_dir = './'
-data_dir = os.path.join(base_dir, 'data')
+train_dir = os.path.join(base_dir, 'train')
+
+data_df = pd.read_csv(os.path.join(train_dir, 'df.csv'), delimiter=';', dtype={'vals':np.float32})
+data_df['vals'] = data_df['vals'] / data_df['vals'].abs().max()
 
 datagen = ImageDataGenerator(horizontal_flip=True,
                              rescale=1./255,
                              validation_split=0.2)
 
-data_df = pd.read_csv(os.path.join(data_dir, 'df.csv'), dtype={'labels':np.float32})
-data_df['labels'] = data_df['labels'] / data_df['labels'].abs().max()
-
 train_gen = datagen.flow_from_dataframe(dataframe=data_df,
-                                        directory=data_dir,
-                                        x_col='ids',
-                                        y_col='labels',
+                                        directory=train_dir,
+                                        x_col='pics',
+                                        y_col='vals',
                                         target_size=(250, 500),
                                         color_mode='grayscale',
-                                        class_mode='other',
+                                        class_mode='raw',
                                         batch_size=10,
-                                        shuffle=False,
+                                        shuffle=True,
                                         subset='training')
 
 val_gen = datagen.flow_from_dataframe(dataframe=data_df,
-                                      directory=data_dir,
-                                      x_col='ids',
-                                      y_col='labels',
+                                      directory=train_dir,
+                                      x_col='pics',
+                                      y_col='vals',
                                       target_size=(250, 500),
                                       color_mode='grayscale',
-                                      class_mode='other',
+                                      class_mode='raw',
                                       batch_size=10,
-                                      shuffle=False,
+                                      shuffle=True,
                                       subset='validation')
+#buff = train_gen.next()
+#b1 = buff[0][0]
+#b2 = buff[1][0]
 
 # Creating NN
 from keras import Input, layers
@@ -65,8 +68,7 @@ model.compile(optimizer=optimizers.SGD(learning_rate=1e-3),
 history = model.fit(train_gen,
                     validation_data=val_gen,
                     epochs=30,
-                    batch_size=10,
-                    steps_per_epoch=10)
+                    batch_size=10)
 
 # Save model
 #model.save('./saved_models/conv_v1')
