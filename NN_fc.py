@@ -48,18 +48,20 @@ from keras import Input, layers
 from keras.models import Model
 
 # NN 1
-input_tensor = Input(shape=(250, 500))
+'''
+input_tensor = Input(shape=(250, 500, 1))
 flat = layers.Flatten()(input_tensor)
-fc_1 = layers.Dense(2048, activation='relu')(flat)
-fc_2 = layers.Dense(1024, activation='relu')(fc_1)
-fc_3 = layers.Dense(512, activation='relu')(fc_2)
-fc_4 = layers.Dense(256, activation='relu')(fc_3)
-fc_5 = layers.Dense(128, activation='relu')(fc_4)
+fc_1 = layers.Dense(4096, activation='relu')(flat)
+fc_2 = layers.Dense(2048, activation='relu')(fc_1)
+fc_3 = layers.Dense(1024, activation='relu')(fc_2)
+fc_4 = layers.Dense(512, activation='relu')(fc_3)
+fc_5 = layers.Dense(256, activation='relu')(fc_4)
+fc_6 = layers.Dense(128, activation='relu')(fc_5)
 output_tensor = layers.Dense(1)(fc_5)
-
+'''
 # NN 2
 '''
-input_tensor = Input(shape=(250, 500))
+input_tensor = Input(shape=(250, 500, 1))
 flat = layers.Flatten()(input_tensor)
 fc_1 = layers.Dense(2048, activation='relu', kernel_regularizer=regularizers.L2(0.01))(flat)
 fc_2 = layers.Dense(1024, activation='relu', kernel_regularizer=regularizers.L2(0.01))(fc_1)
@@ -70,16 +72,15 @@ output_tensor = layers.Dense(1)(fc_5)
 '''
 
 # NN 3
-'''
-input_tensor = Input(shape=(250, 500))
+input_tensor = Input(shape=(250, 500, 1))
 flat = layers.Flatten()(input_tensor)
-fc_1 = layers.Dense(2048, activation='relu', kernel_regularizer=regularizers.l1_l2(l1=0.01, l2=0.01))(flat)
-fc_2 = layers.Dense(1024, activation='relu', kernel_regularizer=regularizers.l1_l2(l1=0.01, l2=0.01))(fc_1)
-fc_3 = layers.Dense(512, activation='relu', kernel_regularizer=regularizers.l1_l2(l1=0.01, l2=0.01))(fc_2)
-fc_4 = layers.Dense(256, activation='relu', kernel_regularizer=regularizers.l1_l2(l1=0.01, l2=0.01))(fc_3)
-fc_5 = layers.Dense(128, activation='relu', kernel_regularizer=regularizers.l1_l2(l1=0.01, l2=0.01))(fc_4)
+fc_1 = layers.Dense(2048, activation='relu', kernel_regularizer=regularizers.l1_l2(l1=0.001, l2=0.001))(flat)
+fc_2 = layers.Dense(1024, activation='relu', kernel_regularizer=regularizers.l1_l2(l1=0.001, l2=0.001))(fc_1)
+fc_3 = layers.Dense(1024, activation='relu', kernel_regularizer=regularizers.l1_l2(l1=0.001, l2=0.001))(fc_2)
+fc_4 = layers.Dense(512, activation='relu', kernel_regularizer=regularizers.l1_l2(l1=0.001, l2=0.001))(fc_3)
+fc_5 = layers.Dense(128, activation='relu', kernel_regularizer=regularizers.l1_l2(l1=0.001, l2=0.001))(fc_4)
 output_tensor = layers.Dense(1)(fc_5)
-'''
+
 
 model = Model(input_tensor, output_tensor)
 model.summary()
@@ -93,8 +94,33 @@ model.compile(optimizer=optimizers.SGD(learning_rate=1e-3),
 
 history = model.fit(train_gen,
                     validation_data=val_gen,
-                    epochs=30,
+                    epochs=1,
+                    steps_per_epoch=500,
                     batch_size=10)
+
+
+# Test network
+#1
+b = train_gen.next()
+b1 = b[0]
+b2 = b[1]
+b2_t = model.predict(b1)
+print('Expectation: ', str(b2))
+print('Result: ', str(b2_t))
+
+#2
+b = train_gen.next()
+b1 = b[0]
+b2 = b[1]
+b2_t = model.predict(b1)
+print('Expectation: ', str(b2), ' Result: ', str(b2_t))
+
+#3
+b = train_gen.next()
+b1 = b[0]
+b2 = b[1]
+b2_t = model.predict(b1)
+print('Expectation: ', str(b2), ' Result: ', str(b2_t))
 
 # Save model
 #model.save('./saved_models/conv_v1')
