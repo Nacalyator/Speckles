@@ -1,4 +1,5 @@
 from keras.preprocessing.image import ImageDataGenerator
+from keras.callbacks import ModelCheckpoint
 from keras import optimizers
 from keras import regularizers
 import numpy as np
@@ -83,13 +84,22 @@ model.compile(optimizer=optimizers.SGD(learning_rate=1e-4),
 
 # Train NN
 
+cp_callback = ModelCheckpoint(filepath='./conv_NN_v1_states/cp-{epoch:04d}.ckpt',
+                              monitor='val_mse',
+                              verbose=1,
+                              save_best_only=True,
+                              mode='min',
+                              save_weights_only=True,
+                              save_freq=50)
+
 history = model.fit(train_gen,
                     validation_data=val_gen,
-                    epochs=14,
-                    steps_per_epoch=100)
+                    epochs=50,
+                    steps_per_epoch=100,
+                    callbacks=[cp_callback])
 
 # Test network
-#1
+# v1
 b = train_gen.next()
 b1 = b[0]
 b2 = b[1]
@@ -113,32 +123,32 @@ print('Expectation: ', str(b2), ' Result: ', str(b2_t))
 
 
 # Save model
-model.save('./saved_models/conv_v1')
+#model.save('./saved_models/conv_v1')
 
 # Save history.history
-#pd.DataFrame.from_dict(history.history, orient='index').transpose().to_csv('dict_CONV.csv')
+pd.DataFrame.from_dict(history.history, orient='index').transpose().to_csv('dict_CONV.csv')
 
 ## Plots
-loss = history.history['loss']
-val_loss = history.history['val_loss']
-acc = history.history['acc']
-val_acc = history.history['val_acc']
-epochs = range(1, len(loss) + 1)
+mse = history.history['mse']
+val_mse = history.history['val_mse']
+mae = history.history['mae']
+val_mae = history.history['val_mae']
+epochs = range(1, len(mse) + 1)
 
-plt.figure('Training and validation loss')
-plt.plot(epochs, loss, 'bo', label='Training loss')
-plt.plot(epochs, val_loss, 'b', label='Validation loss')
-plt.title('Training and validation loss')
+plt.figure('Training and validation MSE')
+plt.plot(epochs, mse, 'bo', label='Training MSE')
+plt.plot(epochs, val_mse, 'b', label='Validation MSE')
+plt.title('Training and validation MSE')
 plt.xlabel('Epochs')
-plt.ylabel('Loss')
+plt.ylabel('MSE')
 plt.legend()
 plt.show()
 
-plt.figure('Training and validation acc')
-plt.plot(epochs, acc, 'bo', label='Training accuracy')
-plt.plot(epochs, val_acc, 'b', label='Validation accuracy')
-plt.title('Training and validation accuracy')
+plt.figure('Training and validation MAE')
+plt.plot(epochs, mae, 'bo', label='Training MAE')
+plt.plot(epochs, val_mae, 'b', label='Validation MAE')
+plt.title('Training and validation MAE')
 plt.xlabel('Epochs')
-plt.ylabel('Loss')
+plt.ylabel('MAE')
 plt.legend()
 plt.show()
