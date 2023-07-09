@@ -4,7 +4,6 @@ from keras import regularizers
 import numpy as np
 import pandas as pd
 import os
-import csv
 import matplotlib.pyplot as plt
 
 # Create generators for data
@@ -53,8 +52,9 @@ fc_1 = layers.Dense(2048, activation='relu', kernel_regularizer=regularizers.l1_
 fc_2 = layers.Dense(1024, activation='relu', kernel_regularizer=regularizers.l1_l2(l1=0.001, l2=0.001))(fc_1)
 fc_3 = layers.Dense(1024, activation='relu', kernel_regularizer=regularizers.l1_l2(l1=0.001, l2=0.001))(fc_2)
 fc_4 = layers.Dense(512, activation='relu', kernel_regularizer=regularizers.l1_l2(l1=0.001, l2=0.001))(fc_3)
-fc_5 = layers.Dense(128, activation='relu', kernel_regularizer=regularizers.l1_l2(l1=0.001, l2=0.001))(fc_4)
-output_tensor = layers.Dense(1)(fc_5)
+fc_5 = layers.Dense(512, activation='relu', kernel_regularizer=regularizers.l1_l2(l1=0.001, l2=0.001))(fc_4)
+fc_6 = layers.Dense(128, activation='relu', kernel_regularizer=regularizers.l1_l2(l1=0.001, l2=0.001))(fc_5)
+output_tensor = layers.Dense(1)(fc_6)
 
 
 model = Model(input_tensor, output_tensor)
@@ -68,8 +68,8 @@ model.compile(optimizer=optimizers.SGD(learning_rate=1e-3),
 
 history = model.fit(train_gen,
                     validation_data=val_gen,
-                    epochs=30,
-                    steps_per_epoch=1000)
+                    epochs=100,
+                    steps_per_epoch=100)
 
 
 # Test network
@@ -99,10 +99,7 @@ print('Expectation: ', str(b2), ' Result: ', str(b2_t))
 #model.save('./saved_models/conv_v1')
 
 # Save history.history
-f = open('dict.csv', 'w')
-w = csv.writes(f)
-w.writerow(history.history.keys())
-w.writerow(history.history.values())
+pd.DataFrame.from_dict(history.history, orient='index').transpose().to_csv('dict_CONV.csv')
 
 ## Plots
 loss = history.history['loss']
