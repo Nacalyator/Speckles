@@ -1,5 +1,6 @@
 data/
 train/
+train_v2/
 conv_NN_v1_states/
 saved_models/
 .conda/
