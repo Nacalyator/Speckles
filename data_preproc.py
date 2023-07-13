@@ -13,7 +13,7 @@ csv_path = './RED.csv'
 # Read data from csv
 load_times = []
 load_deforms = []
-csv_file = open(csv_path, 'r', newline='')
+csv_file = open(csv_path, 'r', newline='', encoding='latin-1')
 csv_reader = csv.reader(csv_file, delimiter=';')
 csv_reader.__next__()
 csv_reader.__next__()
@@ -66,7 +66,7 @@ csv_header = ['pics', 'vals']
 df_writer = csv.writer(csv_file, delimiter=';') 
 df_writer.writerow(csv_header)
 count = 0
-for j in range(1, 10):
+for j in range(1, 15):
 	for i in range(len(frames)-j):
 		filename = str(count).zfill(5) + '.png'
 		#buff = np.concatenate((frames[i], frames[i + j]), axis=1)
