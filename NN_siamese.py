@@ -12,31 +12,120 @@ import matplotlib.pyplot as plt
 
 # Can it solve some erros with the GPU use?
 os.environ['TF_GPU_ALLOCATOR'] = 'cuda_malloc_async'
+    
+## Creating NN
+def euclidean_distance(vectors):
+	# unpack the vectors into separate lists
+	(featsA, featsB) = vectors
+	# compute the sum of squared distances between the vectors
+	sumSquared = K.sum(K.square(featsA - featsB), axis=1, keepdims=True)
+	# return the euclidean distance between the vectors
+	return K.sqrt(K.maximum(sumSquared, K.epsilon()))
+
+#input_stack
+input = Input(shape=(125, 125, 1))
+conv_1 = layers.Conv2D(32, (8, 8), activation='relu') (input)
+conv_2 = layers.Conv2D(48, (7, 7), activation='relu') (conv_1)
+conv_3 = layers.Conv2D(64, (3, 3), activation='relu') (conv_2)
+conv_4 = layers.Conv2D(164, (2, 2), activation='relu') (conv_3)
+flatt_1 = layers.Flatten()(conv_4)
+dense_1 = layers.Dense(448, activation='relu')(flatt_1)
+dense_2 = layers.Dense(192, activation='relu')(dense_1)
+embedding_network = Model(input, dense_2)
+
+'''
+Best MAE is 0.02162 red
+0.01651 blue
+input = Input(shape=(125, 125, 1))
+conv_1 = layers.Conv2D(128, (4, 4), strides=(3, 3), activation='relu') (input)
+conv_2 = layers.Conv2D(64, (6, 6), activation='relu') (conv_1)
+conv_3 = layers.Conv2D(16, (4, 4), activation='relu') (conv_2)
+conv_4 = layers.Conv2D(128, (6, 6), activation='relu') (conv_3)
+flatt_1 = layers.Flatten()(conv_4)
+dense_1 = layers.Dense(2048, activation='relu')(flatt_1)
+dense_2 = layers.Dense(768, activation='relu')(dense_1)
+embedding_network = Model(input, dense_2)
+'''
+'''
+Best MAE is 0.02185
+0.01671
+input = Input(shape=(125, 125, 1))
+conv_1 = layers.Conv2D(48, (5, 5), activation='relu') (input)
+conv_2 = layers.Conv2D(64, (5, 5), strides=(2, 2), activation='relu') (conv_1)
+conv_3 = layers.Conv2D(48, (4, 4), activation='relu') (conv_2)
+conv_4 = layers.Conv2D(96 , (3, 3), activation='relu') (conv_3)
+flatt_1 = layers.Flatten()(conv_4)
+dense_1 = layers.Dense(1536, activation='relu')(flatt_1)
+dense_2 = layers.Dense(512, activation='relu')(dense_1)
+embedding_network = Model(input, dense_2)
+'''
+
+'''
+Best MAE is 0.02098
+0.01811
+input = Input(shape=(125, 125, 1))
+conv_1 = layers.Conv2D(32, (8, 8), activation='relu') (input)
+conv_2 = layers.Conv2D(48, (7, 7), activation='relu') (conv_1)
+conv_3 = layers.Conv2D(64, (3, 3), activation='relu') (conv_2)
+conv_4 = layers.Conv2D(164, (2, 2), activation='relu') (conv_3)
+flatt_1 = layers.Flatten()(conv_4)
+dense_1 = layers.Dense(448, activation='relu')(flatt_1)
+dense_2 = layers.Dense(192, activation='relu')(dense_1)
+embedding_network = Model(input, dense_2)
+'''
+
+input_1 = Input(shape=(125, 125, 1))
+input_2 = Input(shape=(125, 125, 1))
+
+tower_1 = embedding_network(input_1)
+tower_2 = embedding_network(input_2)
+
+merged = layers.Concatenate(axis=-1)([tower_1, tower_2])
+dense__1 = layers.Dense(8192, activation='relu')(merged)
+dense__2 = layers.Dense(2048, activation='relu')(dense__1)
+dense__3 = layers.Dense(512, activation='relu')(dense__2)
+output_layer = layers.Dense(1, activation='sigmoid')(dense__3)
+
+ 
+
+#merge_layer = layers.Lambda(euclidean_distance)([tower_1, tower_2])
+#output_layer = layers.Dense(1, activation='sigmoid')(norm_layer)
+
+model = Model(inputs=[input_1, input_2], outputs=output_layer)
+model.summary()
+
+model.compile(optimizer=optimizers.SGD(learning_rate=1e-2),
+              loss='mse',
+              metrics=['mse', 'mae', 'acc'])
+
+cp_dir = './NN_states/siamese_v1/'
+model_dir = './saved_models/siamese_v1'
+
+cp_callback = ModelCheckpoint(filepath='./NN_states/siamese_v1/cp-{epoch:04d}.ckpt',
+                              monitor='val_mae',
+                              verbose=1,
+                              save_best_only=True,
+                              mode='min',
+                              save_weights_only=True)
+
 
 ## Data generators
-base_dir = './train_v3'
+base_dir = './train_v7'
 train_dir = os.path.join(base_dir, 'train')
 val_dir = os.path.join(base_dir, 'val')
 # Load dataframe from CSV
 data_df_train = pd.read_csv(os.path.join(train_dir, 'df.csv'), delimiter=';', dtype={'vals':np.float32})
 data_df_val = pd.read_csv(os.path.join(val_dir, 'df.csv'), delimiter=';', dtype={'vals':np.float32})
-m1 = data_df_train['vals'].max()
-m2 = data_df_val['vals'].max()
-m = 0
-if m1 >= m2:
-    m = m1
-else:
-    m = m2
-data_df_train['vals'] = data_df_train['vals'] / m
-data_df_val['vals'] = data_df_val['vals'] / m
+
 
 datagen = ImageDataGenerator(rescale=1./255)
+#datagen = ImageDataGenerator()
 
 train_gen_1 = datagen.flow_from_dataframe(dataframe=data_df_train,
                                           directory=os.path.join(train_dir, '1'),
                                           x_col='pics',
                                           y_col='vals',
-                                          target_size=(250, 250),
+                                          target_size=(125, 125),
                                           color_mode='grayscale',
                                           class_mode='raw',
                                           batch_size=1,
@@ -46,7 +135,7 @@ train_gen_2 = datagen.flow_from_dataframe(dataframe=data_df_train,
                                           directory=os.path.join(train_dir, '2'),
                                           x_col='pics',
                                           y_col='vals',
-                                          target_size=(250, 250),
+                                          target_size=(125, 125),
                                           color_mode='grayscale',
                                           class_mode='raw',
                                           batch_size=1,
@@ -56,17 +145,17 @@ val_gen_1 = datagen.flow_from_dataframe(dataframe=data_df_val,
                                         directory=os.path.join(val_dir, '1'),
                                         x_col='pics',
                                         y_col='vals',
-                                        target_size=(250, 250),
+                                        target_size=(125, 125),
                                         color_mode='grayscale',
                                         class_mode='raw',
                                         batch_size=1,
                                         shuffle=True,
                                         seed=7)
 val_gen_2 = datagen.flow_from_dataframe(dataframe=data_df_val,
-                                        directory=os.path.join(val_dir, '1'),
+                                        directory=os.path.join(val_dir, '2'),
                                         x_col='pics',
                                         y_col='vals',
-                                        target_size=(250, 250),
+                                        target_size=(125, 125),
                                         color_mode='grayscale',
                                         class_mode='raw',
                                         batch_size=1,
@@ -83,60 +172,27 @@ def generate_data_generator_for_two_images(gen_1, gen_2):
 train_gen = generate_data_generator_for_two_images(train_gen_1, train_gen_2)
 val_gen = generate_data_generator_for_two_images(val_gen_1, val_gen_2)
 
-buff = next(train_gen)
-b1 = buff[0]
-b2 = buff[1]
+'''
+for i in range(20):
+    buff = next(train_gen)
+    b1 = buff[0]
+    b2 = buff[1]
+    plt.imshow(b1[0][0])
+    plt.show()
+    plt.imshow(b1[1][0])
+    plt.show()
+
+    test = 1
+'''
 
 
-## Creating NN
-def euclidean_distance(vectors):
-	# unpack the vectors into separate lists
-	(featsA, featsB) = vectors
-	# compute the sum of squared distances between the vectors
-	sumSquared = K.sum(K.square(featsA - featsB), axis=1,
-		keepdims=True)
-	# return the euclidean distance between the vectors
-	return K.sqrt(K.maximum(sumSquared, K.epsilon()))
-
-#input_1
-input_1 = Input(shape=(250, 250, 1))
-conv_1_1 = layers.Conv2D(64, (3, 3), activation='relu') (input_1)
-maxpool_1_1 = layers.MaxPooling2D(pool_size=(2, 2))(conv_1_1)
-conv_1_2 = layers.Conv2D(64, (3, 3), activation='relu') (maxpool_1_1)
-maxpool_1_2 = layers.MaxPooling2D(pool_size=(2, 2))(conv_1_2)
-conv_1_3 = layers.Conv2D(64, (3, 3), activation='relu') (maxpool_1_2)
-maxpool_1_3 = layers.MaxPooling2D(pool_size=(2, 2))(conv_1_3)
-GAP_1 = layers.GlobalAveragePooling2D()(maxpool_1_3)
-future_extractor = Model(input_1, GAP_1)
-
-pic_1 = Input(shape=(250, 250, 1))
-pic_2 = Input(shape=(250, 250, 1))
-feats_1 = future_extractor(pic_1)
-feats_2 = future_extractor(pic_2)
-distance = layers.Lambda(euclidean_distance)([feats_1, feats_2])
-outputs = layers.Dense(1, activation="sigmoid")(distance)
-model = Model(inputs=[pic_1, pic_2], outputs=outputs)
-
-model.summary()
-model.compile(optimizer=optimizers.SGD(learning_rate=1e-4),
-              loss='mse',
-              metrics=['mse', 'mae', 'acc'])
-cp_dir = './siamese_NN_v1_states/'
-model_dir = './saved_models/siamese_v1'
-
-cp_callback = ModelCheckpoint(filepath='./siamese_NN_v1_states/cp-{epoch:04d}.ckpt',
-                              monitor='val_mae',
-                              verbose=1,
-                              save_best_only=True,
-                              mode='min',
-                              save_weights_only=True)
 
 ## Train NN
 history = model.fit(train_gen,
                     validation_data=val_gen,
-                    epochs=1000,
-                    steps_per_epoch=1000,
-                    validation_steps=1000,
+                    epochs=1500,
+                    steps_per_epoch=500,
+                    validation_steps=200,
                     callbacks=[cp_callback],
                     verbose=1)
 
@@ -157,7 +213,7 @@ model = Model(input_tensor, output_tensor)
 ## Load latest weight with the lowest MSE validation values
 latest = tf.train.latest_checkpoint(cp_dir)
 print(latest)
-#model.load_weights(latest)
+model.load_weights(latest)
 
 # =============================================
 # Keract visualizations
@@ -173,30 +229,19 @@ activations = get_activations(model, keract_inputs)
 display_activations(activations, cmap="gray", save=False)
 '''
 
-'''
+
 ## Test network
 #loss, acc = model.evaluate(val_gen, verbose=2)
 #print('The best loss is ' + str(loss) + ' and the accuracy is ' + str(acc))
 # v1
-b = train_gen.next()
-b1 = b[0]
-b2 = b[1]
-b2_t = model.predict(b1)
-print('Expectation: ', str(b2))
-print('Result: ', str(b2_t))
-#2
-b = train_gen.next()
-b1 = b[0]
-b2 = b[1]
-b2_t = model.predict(b1)
-print('Expectation: ', str(b2), ' Result: ', str(b2_t))
-#3
-b = train_gen.next()
-b1 = b[0]
-b2 = b[1]
-b2_t = model.predict(b1)
-print('Expectation: ', str(b2), ' Result: ', str(b2_t))
-'''
+
+for j in range(20):
+     buff = next(val_gen)
+     inp = buff[0]
+     outp = buff[1]
+     res = model.predict(inp)
+     print('Expected: ', str(outp), ', Result: ', str(res), ', Diff: ', str(abs(res-outp)))
+
 ## Save model
 model.save(model_dir)
 
@@ -210,20 +255,15 @@ mae = history.history['mae']
 val_mae = history.history['val_mae']
 epochs = range(1, len(mse) + 1)
 
-plt.figure('Training and validation MSE')
-plt.plot(epochs, mse, 'bo', label='Training MSE')
-plt.plot(epochs, val_mse, 'b', label='Validation MSE')
-plt.title('Training and validation MSE')
-plt.xlabel('Epochs')
-plt.ylabel('MSE')
-plt.legend()
-plt.show()
+def plt_metric(history, metric, title, has_valid=True):
+    plt.plot(history[metric], 'bo')
+    if has_valid:
+        plt.plot(history["val_" + metric], 'b')
+        plt.legend(["train", "validation"], loc="upper left")
+    plt.title(title)
+    plt.ylabel(metric)
+    plt.xlabel("epoch")
+    plt.show()
 
-plt.figure('Training and validation MAE')
-plt.plot(epochs, mae, 'bo', label='Training MAE')
-plt.plot(epochs, val_mae, 'b', label='Validation MAE')
-plt.title('Training and validation MAE')
-plt.xlabel('Epochs')
-plt.ylabel('MAE')
-plt.legend()
-plt.show()
+plt_metric(history.history, 'mse', 'Training and validation MSE', True)
+plt_metric(history.history, 'mae', 'Training and validation MAE', True)
