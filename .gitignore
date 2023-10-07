@@ -1,14 +1,6 @@
-data/
-train/
-train_v2/
-train_v3/
-conv_NN_v1_states/
-saved_models/
+Data/
+train_v7/
 .conda/
 .vs
 .vscode
 gpt.txt
-BLUE.mp4
-BLUE.csv
-RED.mp4
-RED.csv
