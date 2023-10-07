@@ -5,10 +5,12 @@ import os
 import matplotlib.pyplot as plt
 
 # Paths to data files
-data_path = './Data/SM_RED'
+data_path = './Data/SM_BLUE_v2'
 # Get lists of files
 CSVs = [f for f in os.listdir(data_path) if f[-4:] == '.csv']
+CSVs.sort()
 videos = [f for f in os.listdir(data_path) if f[-4:] == '.mp4']
+videos.sort()
 assert len(CSVs) == len(videos), 'Oops! There is a difference in the files amount'
 files_amount = len(CSVs)
 
@@ -113,19 +115,19 @@ for i in range(files_amount):
 				frame_2 = cv2.flip(frames[0], 1)
 			elif k == 7:
 				frame_1 = cv2.flip(frames[j], -1)
-				frame_2 = cv2.flip(frames[o], -1)
+				frame_2 = cv2.flip(frames[0], -1)
 
 			count += 1
 			filename = str(count).zfill(7) + '.png'
 			if (count % count_val) == 0:
 				cv2.imwrite(os.path.join(os.path.join(val_dir, '1'), filename), frame_1)
 				cv2.imwrite(os.path.join(os.path.join(val_dir, '2'), filename), frame_2)
-				deforms_val.append(data_deform[i])
+				deforms_val.append(data_deform[j])
 				pic_name_val.append(filename)
 			else:
 				cv2.imwrite(os.path.join(os.path.join(train_dir, '1'), filename), frame_1)
 				cv2.imwrite(os.path.join(os.path.join(train_dir, '2'), filename), frame_2)
-				deforms_train.append(data_deform[i])
+				deforms_train.append(data_deform[j])
 				pic_name_train.append(filename)
 
 

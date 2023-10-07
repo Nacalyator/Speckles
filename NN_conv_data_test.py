@@ -1,60 +1,71 @@
 import tensorflow as tf
+from keras.backend import clear_session
 from keras import Input, layers, optimizers, regularizers
 from keras.models import Model
 from keras.callbacks import ModelCheckpoint
+from keras.preprocessing.image import ImageDataGenerator
 import numpy as np
 import pandas as pd
+import csv
+import cv2
 import os
 import matplotlib.pyplot as plt
 
 os.environ['TF_GPU_ALLOCATOR'] = 'cuda_malloc_async'
 #print(os.getenv('TF_GPU_ALLOCATOR'))
 
-def generate_matrix(line_num):
-    matrix = np.zeros((125, 125), dtype=np.float32)
-    row_to_fill = (line_num // 4) % 125
-    matrix[row_to_fill] = np.linspace(0.1, 12.5, 125)
-    # Adding random noise to the matrix
-    noise = np.random.normal(0, 1, size=(125, 125))  # Generate random noise with mean=0 and standard deviation=1
-    matrix += noise * 0.2  # Scale the noise by the noise_proportion
-    # Clip the matrix values to a maximum of 1
-    matrix = np.clip(matrix, 0, 1)
-    return matrix
+## Load data
+# Data generators
+base_dir = './train_v6'
+train_dir = os.path.join(base_dir, 'train')
+# Load dataframe from CSV
+data_df_train = pd.read_csv(os.path.join(train_dir, 'df.csv'), delimiter=';', dtype={'vals':np.float32})
+m = data_df_train['vals'].max()
+data_df_train['vals'] = data_df_train['vals'] / m
 
-def generate_coefficient(line_num):
-    row_to_fill = (line_num // 4) % 125
-    if row_to_fill == 0: return 1/1
-    return 1/row_to_fill
+datagen = ImageDataGenerator(rescale=1./255,
+                             validation_split=0.2)
 
-x = np.array([generate_matrix(x) for x in range(5000)])
-y = np.array([generate_coefficient(x) for x in range(5000)])
+train_gen = datagen.flow_from_dataframe(dataframe=data_df_train,
+                                        directory=train_dir,
+                                        x_col='pics',
+                                        y_col='vals',
+                                        target_size=(125, 125),
+                                        color_mode='grayscale',
+                                        class_mode='raw',
+                                        batch_size=32,
+                                        shuffle=True,
+                                        subset='training')
 
-# Normalize x
-x = x / 12.5
+val_gen = datagen.flow_from_dataframe(dataframe=data_df_train,
+                                        directory=train_dir,
+                                        x_col='pics',
+                                        y_col='vals',
+                                        target_size=(125, 125),
+                                        color_mode='grayscale',
+                                        class_mode='raw',
+                                        batch_size=32,
+                                        shuffle=True,
+                                        subset='validation')
+
+
+
 
 ## Creating NN
 
-
-##input_tensor = Input(shape=(125, 125, 1))
-##conv_1 = layers.Conv2D(8, (5, 5), activation='relu', kernel_regularizer=regularizers.l1_l2(l1=0.001, l2=0.001))(input_tensor)
-##conv_2 = layers.Conv2D(16, (5, 5), activation='relu', kernel_regularizer=regularizers.l1_l2(l1=0.001, l2=0.001))(conv_1)
-##conv_3 = layers.Conv2D(24, (2, 2), activation='relu', kernel_regularizer=regularizers.l1_l2(l1=0.001, l2=0.001))(conv_2)
-##flatten_1 = layers.Flatten()(conv_3)
-##fc_1 = layers.Dense(128, activation='relu', kernel_regularizer=regularizers.L1L2(l1=0.001, l2=0.001))(flatten_1)
-##fc_2 = layers.Dense(32, activation='relu',  kernel_regularizer=regularizers.L1L2(l1=0.001, l2=0.001))(fc_1)
-##output_tensor = layers.Dense(1)(fc_2)
 input_tensor = Input(shape=(125, 125, 1))
-conv_1 = layers.Conv2D(16, (2, 2), activation='relu')(input_tensor)
-conv_2 = layers.Conv2D(24, (2, 2), activation='relu')(conv_1)
-conv_3 = layers.Conv2D(32, (2, 2), activation='relu')(conv_2)
-flatten_1 = layers.Flatten()(conv_3)
-fc_1 = layers.Dense(256, activation='relu')(flatten_1)
-fc_2 = layers.Dense(64, activation='relu')(fc_1)
+conv_1 = layers.Conv2D(32, (8, 8), activation='relu')(input_tensor)
+conv_2 = layers.Conv2D(48, (7, 7), activation='relu')(conv_1)
+conv_3 = layers.Conv2D(64, (3, 3), activation='relu')(conv_2)
+conv_4 = layers.Conv2D(172, (2, 2), activation='relu')(conv_3)
+flatten_1 = layers.Flatten()(conv_4)
+fc_1 = layers.Dense(448, activation='relu')(flatten_1)
+fc_2 = layers.Dense(192, activation='relu')(fc_1)
 output_tensor = layers.Dense(1)(fc_2)
 
 model = Model(input_tensor, output_tensor)
 model.summary()
-model.compile(optimizer=optimizers.SGD(learning_rate=1e-4),
+model.compile(optimizer=optimizers.SGD(learning_rate=1e-2),
               loss='mse',
               metrics=['acc', 'mse', 'mae'])
 cp_dir = './NN_states/conv_NN/'
@@ -69,24 +80,14 @@ cp_callback = ModelCheckpoint(filepath='./NN_states/conv_NN/cp-{epoch:04d}.ckpt'
 
 ## Train NN
 
-history = model.fit(x=x, y=y,
-                    epochs=15000,
+history = model.fit(train_gen,
+                    epochs=20,
                     batch_size=32,
-                    validation_split=0.2,
+                    validation_data=val_gen,
                     callbacks=[cp_callback])
 
+clear_session()
 
-## Redefine model
-input_tensor = Input(shape=(125, 125, 1))
-conv_1 = layers.Conv2D(16, (2, 2), activation='relu')(input_tensor)
-conv_2 = layers.Conv2D(24, (2, 2), activation='relu')(conv_1)
-conv_3 = layers.Conv2D(32, (2, 2), activation='relu')(conv_2)
-flatten_1 = layers.Flatten()(conv_3)
-fc_1 = layers.Dense(256, activation='relu')(flatten_1)
-fc_2 = layers.Dense(64, activation='relu')(fc_1)
-output_tensor = layers.Dense(1)(fc_2)
-
-model = Model(input_tensor, output_tensor)
 
 ## Load latest weight with the lowest MSE validation values
 latest = tf.train.latest_checkpoint(cp_dir)
@@ -101,13 +102,14 @@ model.load_weights(latest)
 #loss, acc = model.evaluate(val_gen, verbose=2)
 #print('The best loss is ' + str(loss) + ' and the accuracy is ' + str(acc))
 for i in range(0, 10):
-    ind = i*100
-    x1 = x[ind]
-    y1 = y[ind]
+    buff = next(train_gen)
+    x1 = buff[0][0]
+    y1 = buff[1][0]
     x1 = np.expand_dims(x1, axis=0)
     y2 = model.predict(x1)
     print('Expectation: ', str(y1))
     print('Result: ', str(y2[0][0]))
+
 
 ## Save model
 model.save(model_dir)
@@ -145,9 +147,19 @@ plt.show()
 # =============================================
 
 from keract import get_activations, display_activations
-x1 = np.expand_dims(x[1], axis=0)
-y1 = y[1]
+buff = next(train_gen)
+x1 = buff[0][0]
+x1 = np.expand_dims(x1, axis=0)
+y1 = buff[1][0]
 keract_inputs = x1
 keract_targets = y1
 activations = get_activations(model, keract_inputs)
 display_activations(activations, cmap="gray", save=False)
+
+'''
+conv_1 = layers.Conv2D(32, (5, 5), strides=(2, 2), activation='relu')(input_tensor)
+conv_2 = layers.Conv2D(48, (5, 5), strides=(2, 2), activation='relu')(conv_1)
+conv_3 = layers.Conv2D(64, (4, 4), activation='relu')(conv_2)
+conv_4 = layers.Conv2D(64, (3, 3), activation='relu')(conv_3)
+271 (mae 0.01876)
+'''
