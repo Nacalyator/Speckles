@@ -51,22 +51,6 @@ val_gen = datagen.flow_from_dataframe(dataframe=data_df,
 
 ## Creating NN
 
-#1
-'''
-input_tensor = Input(shape=(250, 500, 1))
-conv_1 = layers.Conv2D(16, (4, 4), activation='relu')(input_tensor)
-d1 = layers.Dropout(0.1)(conv_1)
-conv_2 = layers.Conv2D(24, (3, 3), activation='relu')(d1)
-d2 = layers.Dropout(0.1)(conv_2)
-conv_3 = layers.Conv2D(32, (3, 3), activation='relu')(conv_2)
-flatten_1 = layers.Flatten()(conv_3)
-fc_1 = layers.Dense(64, activation='relu',
-                    kernel_regularizer=regularizers.L1L2(l1=0.01, l2=0.01))(flatten_1)
-fc_2 = layers.Dense(32, activation='relu')(fc_1)
-output_tensor = layers.Dense(1, activation = 'linear')(fc_2)
-'''
-#2
-
 input_tensor = Input(shape=(250, 500, 1))
 conv_1 = layers.Conv2D(16, (10, 10), activation='relu', kernel_regularizer=regularizers.l1_l2(l1=0.001, l2=0.001))(input_tensor)
 conv_2 = layers.Conv2D(24, (5, 5), activation='relu', kernel_regularizer=regularizers.l1_l2(l1=0.001, l2=0.001))(conv_1)
@@ -99,19 +83,6 @@ history = model.fit(train_gen,
                     callbacks=[cp_callback])
 
 
-## Redefine model
-'''
-input_tensor = Input(shape=(None, 250, 500, 1))
-conv_1 = layers.Conv2D(16, (5, 5), activation='relu', kernel_regularizer=regularizers.l1_l2(l1=0.001, l2=0.001))(input_tensor)
-conv_2 = layers.Conv2D(24, (4, 4), activation='relu', kernel_regularizer=regularizers.l1_l2(l1=0.001, l2=0.001))(conv_1)
-conv_3 = layers.Conv2D(24, (3, 3), activation='relu', kernel_regularizer=regularizers.l1_l2(l1=0.001, l2=0.001))(conv_2)
-flatten_1 = layers.Flatten()(conv_3)
-fc_1 = layers.Dense(128, activation='relu', kernel_regularizer=regularizers.L1L2(l1=0.001, l2=0.001))(flatten_1)
-fc_2 = layers.Dense(32, activation='relu',  kernel_regularizer=regularizers.L1L2(l1=0.001, l2=0.001))(fc_1)
-output_tensor = layers.Dense(1)(fc_2)
-
-model = Model(input_tensor, output_tensor)
-'''
 ## Load latest weight with the lowest MSE validation values
 latest = tf.train.latest_checkpoint(cp_dir)
 print(latest)
